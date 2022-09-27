@@ -1,12 +1,8 @@
 package unisinos.java.sniffer;
 
-import io.pkts.Pcap;
-import unisinos.java.sniffer.process.ProcessExecutor;
+import java.io.Closeable;
 import unisinos.java.sniffer.constants.SnifferConstants;
-import unisinos.java.sniffer.broadcast.BroadcastClient;
-import unisinos.java.sniffer.broadcast.BroadcastServer;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +11,10 @@ import java.util.logging.Logger;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import unisinos.java.sniffer.broadcast.BroadcastClient;
+import unisinos.java.sniffer.broadcast.BroadcastServer;
+import unisinos.java.sniffer.broadcast.PcapBroadcastClient;
+import unisinos.java.sniffer.broadcast.PcapBroadcastServer;
 
 @Command(name = "Sniffer", mixinStandardHelpOptions = true)
 public class SnifferTest implements Runnable {
@@ -37,42 +37,44 @@ public class SnifferTest implements Runnable {
 
     @Override
     public void run() {
-        try {            
-            startServer(); // Starts the server and simulates server messages
+        try {
+            startServer(); // Starts the server
             startClient(); // Put the client to listen to the host broadcast
             for (Thread thread: threads) thread.join(); // Waits for threads to finish
         } catch (IOException | InterruptedException ex) {
             Logger.getLogger(SnifferTest.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
-    private void startClient() throws IOException {
-        if (host.isEmpty()) {
-            return;
-        }
-        BroadcastClient client = new BroadcastClient();
-        client.addHost(InetAddress.getByName(host), severPort);
-        threads.add(client.start());
-               
-        Pcap pcap = Pcap.openStream(client.getInputStream());
-        pcap.loop((packet) -> {
-            System.out.println(packet);
-            return true;
-        });
-    }
 
     private void startServer() throws IOException {
         if (noServe) {
             return;
         }
-        BroadcastServer server = new BroadcastServer(severPort);
-        server.setInputStream(getPacketCaptureStream());
+        BroadcastServer server = new PcapBroadcastServer(severPort, captureCommand);
         threads.add(server.start());
     }
     
-    private InputStream getPacketCaptureStream() throws IOException {
-        Process captureProcess = ProcessExecutor.getShellProcess(captureCommand);
-        return captureProcess.getInputStream();
+    private void startClient() throws IOException {
+        if (host.isEmpty()) {
+            return;
+        }
+        BroadcastClient client = new PcapBroadcastClient();
+        handleCloseOnShutdown(client);
+        threads.add(client.start());
+        client.addHost(InetAddress.getByName(host), severPort);
+    }
+    
+    private void handleCloseOnShutdown(Closeable closeable) {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try {
+                    closeable.close();
+                } catch (IOException ex) {
+                    Logger.getLogger(SnifferTest.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
     }
     
     public static void main(String[] args) throws IOException {        
