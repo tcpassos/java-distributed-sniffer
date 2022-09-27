@@ -1,9 +1,12 @@
 package unisinos.java.sniffer;
 
 import java.io.Closeable;
+import java.io.File;
 import unisinos.java.sniffer.constants.SnifferConstants;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -22,10 +25,14 @@ public class SnifferTest implements Runnable {
     // Commandline parameters
     @Option(names = { "-s", "--host" }, description = "Host to sniff") 
     String host = "";
+    @Option(names = { "-S", "--host-file" }, description = "File with hosts to sniff") 
+    String hostFile = "";
     @Option(names = { "-p", "--port" }, description = "Server port (default=" + SnifferConstants.SERVER_DEFAULT_PORT + ")")
     int severPort = SnifferConstants.SERVER_DEFAULT_PORT;
     @Option(names = { "--no-serve" }, description = "Does not act as a server visible to other hosts") 
     boolean noServe = false;
+    @Option(names = { "-o", "--output" }, description = "Output file") 
+    String output = "";
     @Option(names = { "-c", "--command" }, description = "Command to perform packet capture (default=tcpdump)") 
     String captureCommand = "sudo tcpdump -w - -U";
     
@@ -51,17 +58,38 @@ public class SnifferTest implements Runnable {
             return;
         }
         BroadcastServer server = new PcapBroadcastServer(severPort, captureCommand);
+        handleCloseOnShutdown(server);
         threads.add(server.start());
     }
     
     private void startClient() throws IOException {
-        if (host.isEmpty()) {
+        if (host.isEmpty() && hostFile.isEmpty()) {
             return;
         }
-        BroadcastClient client = new PcapBroadcastClient();
+        BroadcastClient client;
+        if (output.isEmpty()) {
+            client = new PcapBroadcastClient();
+        } else {
+            client = new PcapBroadcastClient(new File(output));
+        }
         handleCloseOnShutdown(client);
         threads.add(client.start());
-        client.addHost(InetAddress.getByName(host), severPort);
+        addHosts(client);
+    }
+    
+    private void addHosts(BroadcastClient client) throws IOException {
+        if (!host.isEmpty()) {
+            client.addHost(InetAddress.getByName(host), severPort);
+        }
+        if (!hostFile.isEmpty()) {
+            Path hostsPath = Path.of(hostFile);
+            if (Files.exists(hostsPath)) {
+                List<String> hosts = Files.readAllLines(hostsPath);
+                for (String hostName: hosts) {
+                    client.addHost(InetAddress.getByName(hostName), severPort);
+                }
+            }
+        }
     }
     
     private void handleCloseOnShutdown(Closeable closeable) {

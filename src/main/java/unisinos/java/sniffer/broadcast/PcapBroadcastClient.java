@@ -1,16 +1,29 @@
 package unisinos.java.sniffer.broadcast;
 
 import io.pkts.Pcap;
+import io.pkts.PcapOutputStream;
 import io.pkts.packet.IPPacket;
 import io.pkts.packet.Packet;
 import io.pkts.packet.TransportPacket;
 import io.pkts.protocol.Protocol;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PcapBroadcastClient extends BroadcastGenericClient {
+    
+    private File outputFile;
+    private PcapOutputStream outputFileStream;
+
+    public PcapBroadcastClient(File outputFile) throws IOException {
+        super();
+        this.outputFile = outputFile;
+        handlePackets();
+    }
 
     public PcapBroadcastClient() throws IOException {
         super();
@@ -21,7 +34,13 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
         new Thread(() -> {
             try {
                 Pcap pcap = Pcap.openStream(super.getInputStream());
+                if (Objects.nonNull(outputFile)) {
+                    outputFileStream = pcap.createOutputStream(new FileOutputStream(outputFile));
+                }
                 pcap.loop((packet) -> {
+                    if (Objects.nonNull(outputFileStream)) {
+                        outputFileStream.write(packet);
+                    }
                     printPacket(packet);
                     return true;
                 });
@@ -54,5 +73,13 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
             return Optional.of((TransportPacket) packet.getPacket(Protocol.UDP));
         return Optional.empty();
     }
-    
+
+    @Override
+    public void close() throws IOException {
+        super.close();
+        if (Objects.nonNull(outputFileStream)) {
+            outputFileStream.close();
+        }
+    }
+
 }

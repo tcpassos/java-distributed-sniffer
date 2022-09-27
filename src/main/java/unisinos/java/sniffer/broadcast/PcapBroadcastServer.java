@@ -12,7 +12,7 @@ public class PcapBroadcastServer extends BroadcastGenericServer {
     private final byte[] pcapHeader;
     
     public PcapBroadcastServer(int serverPort, String captureCommand) throws IOException {
-        super(serverPort);
+        super(serverPort);        
         // Opens a input stream with the packet capture process output
         Process captureProcess = ProcessExecutor.getShellProcess(captureCommand);
         InputStream captureInputStream = captureProcess.getInputStream();

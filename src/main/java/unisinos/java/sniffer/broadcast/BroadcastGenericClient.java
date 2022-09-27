@@ -42,6 +42,7 @@ public class BroadcastGenericClient implements BroadcastClient {
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, host, port);
         clientSocket.send(sendPacket);
         hosts.add(new InetSocketAddress(host, port));
+        System.out.println("Host added [" + host.getHostAddress() + ":" + port  + "]");
     }
 
     /**
