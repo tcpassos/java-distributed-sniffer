@@ -14,13 +14,13 @@
         <dependency>
             <groupId>io.pkts</groupId>
             <artifactId>pkts-core</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.10</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>io.pkts</groupId>
             <artifactId>pkts-streams</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.10</version>
             <type>jar</type>
         </dependency>
         <dependency>

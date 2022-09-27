@@ -1,20 +1,28 @@
 package unisinos.java.sniffer.broadcast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.util.function.Consumer;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import unisinos.java.sniffer.constants.SnifferConstants;
 
 public class BroadcastClient {
     
     private final DatagramSocket clientSocket;
+    private final PipedOutputStream outputStream;
+    private final PipedInputStream inputStream;
 
-    public BroadcastClient() throws SocketException {
+    public BroadcastClient() throws IOException {
         this.clientSocket = new DatagramSocket();
+        this.outputStream = new PipedOutputStream();
+        this.inputStream = new PipedInputStream();
+        inputStream.connect(outputStream);
     }
     
     /**
@@ -32,18 +40,18 @@ public class BroadcastClient {
     /**
      * Start listening to the broadcast
      *
-     * @param packetConsumer Consumer that will handle packets received from broadcast hosts
      * @return {@code Thread}
      * @throws IOException
      */
-    public Thread listen(Consumer<DatagramPacket> packetConsumer) throws IOException {
+    public Thread start() throws IOException {
         Thread clientThread = new Thread(() -> {
-            byte[] receiveData = new byte[1024];
+            byte[] receivedData = new byte[SnifferConstants.MAX_BUFFER_SIZE];
             while (true) {
-                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                Arrays.fill(receivedData, (byte) 0);
+                DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
                 try {
-                    clientSocket.receive(receivePacket);
-                    packetConsumer.accept(receivePacket);
+                    clientSocket.receive(receivePacket);          
+                    outputStream.write(receivedData, receivePacket.getOffset(), receivePacket.getLength());
                 } catch (IOException ex) {
                     Logger.getLogger(BroadcastClient.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -51,6 +59,10 @@ public class BroadcastClient {
         });
         clientThread.start();
         return clientThread;
+    }
+    
+    public InputStream getInputStream() {
+        return inputStream;
     }
 
 }
