@@ -22,12 +22,4 @@ public interface BroadcastClient extends Closeable {
      */
     public void addHost(InetAddress host, int port) throws IOException;
 
-    /**
-     * Remove a host
-     * @param host Host
-     * @param port Port
-     * @throws IOException
-     */
-    public void removeHost(InetAddress host, int port) throws IOException;
-    
 }

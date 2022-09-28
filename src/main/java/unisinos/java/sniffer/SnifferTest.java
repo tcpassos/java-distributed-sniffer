@@ -84,7 +84,8 @@ public class SnifferTest implements Runnable {
      * @throws IOException 
      */
     private void startClient() throws IOException {
-        if (host.isEmpty() && hostFile.isEmpty()) {
+        Set<String> hostsToSniff = getHostsToSniff();
+        if (hostsToSniff.isEmpty()) {
             return;
         }
         BroadcastClient client;
@@ -95,12 +96,11 @@ public class SnifferTest implements Runnable {
         }
         handleCloseOnShutdown(client);
         threads.add(client.start());
-        Set<String> hostsToSniff = getHostsToSniff();
         // Print hosts banner
         System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
         System.out.println(colorize("Listening for packets from:", Attribute.GREEN_TEXT()));
         System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
-        hostsToSniff.forEach(hostToSniff -> System.out.println(colorize(host, Attribute.BOLD(), Attribute.GREEN_TEXT())));
+        hostsToSniff.forEach(hostToSniff -> System.out.println(colorize(hostToSniff, Attribute.GREEN_TEXT())));
         System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
         // Start to listening for packets from hosts
         for (String hostName: hostsToSniff)

@@ -2,6 +2,7 @@ package unisinos.java.sniffer.broadcast;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.DatagramPacket;
@@ -45,20 +46,6 @@ public class BroadcastGenericClient implements BroadcastClient, BroadcastConstan
     }
 
     /**
-     * Remove a host
-     * @param host Host
-     * @param port Port
-     * @throws IOException
-     */
-    @Override
-    public void removeHost(InetAddress host, int port) throws IOException {
-        byte[] sendData = ACTION_REMOVE_LISTENER.getBytes();
-        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, host, port);
-        clientSocket.send(sendPacket);
-        hosts.remove(new InetSocketAddress(host, port));
-    }
-
-    /**
      * Start listening to the broadcast
      *
      * @return {@code Thread}
@@ -72,7 +59,7 @@ public class BroadcastGenericClient implements BroadcastClient, BroadcastConstan
                 Arrays.fill(receivedData, (byte) 0);
                 DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
                 try {
-                    clientSocket.receive(receivePacket);          
+                    clientSocket.receive(receivePacket);
                     outputStream.write(receivedData, receivePacket.getOffset(), receivePacket.getLength());
                 } catch (IOException ex) {
                     Logger.getLogger(BroadcastGenericClient.class.getName()).log(Level.SEVERE, null, ex);
@@ -87,10 +74,18 @@ public class BroadcastGenericClient implements BroadcastClient, BroadcastConstan
         return inputStream;
     }
 
+    public OutputStream getOutputStream() {
+        return outputStream;
+    }
+
     @Override
     public void close() throws IOException {
+        byte[] sendData = ACTION_REMOVE_LISTENER.getBytes();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
         for (InetSocketAddress host: hosts) {
-            removeHost(host.getAddress(), host.getPort());
+            sendPacket.setAddress(host.getAddress());
+            sendPacket.setPort(host.getPort());
+            clientSocket.send(sendPacket);
         }
     }
 

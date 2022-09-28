@@ -4,6 +4,9 @@ import com.diogonunes.jcolor.Ansi;
 import com.diogonunes.jcolor.Attribute;
 import io.pkts.Pcap;
 import io.pkts.PcapOutputStream;
+import io.pkts.buffer.Buffer;
+import io.pkts.buffer.Buffers;
+import io.pkts.frame.PcapGlobalHeader;
 import io.pkts.packet.IPPacket;
 import io.pkts.packet.Packet;
 import io.pkts.packet.TransportPacket;
@@ -18,7 +21,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.IntStream;
 import unisinos.java.sniffer.broadcast.BroadcastGenericClient;
 
 public class PcapBroadcastClient extends BroadcastGenericClient {
@@ -40,6 +42,8 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
     private void handlePackets() throws IOException {
         new Thread(() -> {
             try {
+                // Write pcap default header
+                super.getOutputStream().write(getDefaultPcapHeader());
                 Pcap pcap = Pcap.openStream(super.getInputStream());
                 if (Objects.nonNull(outputFile)) {
                     outputFileStream = pcap.createOutputStream(new FileOutputStream(outputFile));
@@ -97,6 +101,22 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
         attributes[0] = Attribute.TEXT_COLOR(fgColor);
         attributes[1] = Attribute.BLACK_BACK();
         return attributes;
+    }
+    
+    private byte[] getDefaultPcapHeader() throws IOException {
+        Buffer body = Buffers.createBuffer(20);
+        body.setUnsignedByte(0, (short) 2);
+        body.setUnsignedByte(2, (short) 4);
+        body.setUnsignedInt(4, 0);
+        body.setUnsignedInt(8, 0);
+        body.setUnsignedInt(12, 65535);
+        Protocol protocol = Protocol.ETHERNET_II;
+        Long linkType = protocol.getLinkType();
+        body.setUnsignedInt(16, linkType);
+        Buffer header = Buffers.createBuffer(24);
+        header.write(PcapGlobalHeader.MAGIC_LITTLE_ENDIAN);
+        header.write(body.getRawArray());
+        return header.getRawArray();
     }
 
     @Override
