@@ -6,6 +6,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -36,6 +37,7 @@ public class BroadcastGenericServer implements BroadcastServer, BroadcastConstan
             startInputStreamHandler();
             byte[] receiveData = new byte[SnifferConstants.MAX_BUFFER_SIZE];
             while (true) {
+                Arrays.fill(receiveData, (byte) 0);
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 try {
                     serverSocket.receive(receivePacket);

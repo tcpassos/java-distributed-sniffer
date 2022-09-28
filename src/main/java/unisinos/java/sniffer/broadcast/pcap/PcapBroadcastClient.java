@@ -1,5 +1,7 @@
 package unisinos.java.sniffer.broadcast.pcap;
 
+import com.diogonunes.jcolor.Ansi;
+import com.diogonunes.jcolor.Attribute;
 import io.pkts.Pcap;
 import io.pkts.PcapOutputStream;
 import io.pkts.packet.IPPacket;
@@ -10,11 +12,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 import unisinos.java.sniffer.broadcast.BroadcastGenericClient;
 
 public class PcapBroadcastClient extends BroadcastGenericClient {
@@ -62,11 +66,13 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
         IPPacket ipPacket = transportPacket.getParentPacket();
         SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         Date arrivalDate = new Date(packet.getArrivalTime() / 1000);
-        System.out.printf("(%s %s) [%s:%d] --> [%s:%d]\n",
+        System.out.printf("(%s %s) [%s:%s] --> [%s:%s]\n",
                           formatter.format(arrivalDate),
                           transportPacket.getProtocol().getName().toUpperCase(),
-                          ipPacket.getSourceIP(), transportPacket.getSourcePort(),
-                          ipPacket.getDestinationIP(), transportPacket.getDestinationPort());
+                          ipPacket.getSourceIP(),
+                          Ansi.colorize(String.valueOf(transportPacket.getSourcePort()), getPortTextColors(transportPacket.getSourcePort())),
+                          ipPacket.getDestinationIP(),
+                          Ansi.colorize(String.valueOf(transportPacket.getDestinationPort()), getPortTextColors(transportPacket.getDestinationPort())));
 //        ApplicationPacket applicationPacket = (ApplicationPacket) transportPacket.getNextPacket();
 //        if (Objects.nonNull(applicationPacket)) {
 //            Optional.ofNullable(applicationPacket.getPayload())
@@ -80,6 +86,17 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
         if (packet.hasProtocol(Protocol.UDP))
             return Optional.of((TransportPacket) packet.getPacket(Protocol.UDP));
         return Optional.empty();
+    }
+    
+    private Attribute[] getPortTextColors(int port) {
+        Attribute[] attributes = new Attribute[2];
+        int fgColor = port % 255;
+        if (Arrays.asList(1, 16, 17, 18, 234, 235, 236).contains(fgColor)) { // To dark
+            fgColor = 15;
+        }
+        attributes[0] = Attribute.TEXT_COLOR(fgColor);
+        attributes[1] = Attribute.BLACK_BACK();
+        return attributes;
     }
 
     @Override

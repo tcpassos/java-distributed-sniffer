@@ -41,7 +41,7 @@ public class SnifferTest implements Runnable {
     @Option(names = { "-o", "--output" }, description = "Output file") 
     String output = "";
     @Option(names = { "-c", "--command" }, description = "Command to perform packet capture (default=tcpdump)") 
-    String captureCommand = "tcpdump -w - -U host $(hostname -I | awk '{print $1}') and port not " + serverPort;
+    String captureCommand = "tcpdump -w - -U --no-promiscuous-mode host $(hostname -I | awk '{print $1}') and port not " + serverPort;
     
     List<Thread> threads;
 
@@ -73,9 +73,9 @@ public class SnifferTest implements Runnable {
         handleCloseOnShutdown(server);
         threads.add(server.start());
         // Print the local IP used to serve
-        System.out.println(colorize("***********************************", Attribute.YELLOW_TEXT()));
+        System.out.println(colorize("**************************************", Attribute.YELLOW_TEXT()));
         System.out.printf (colorize("Sending packets at %s:%d\n", Attribute.YELLOW_TEXT()), getLocalIp(), serverPort);
-        System.out.println(colorize("***********************************", Attribute.YELLOW_TEXT()));
+        System.out.println(colorize("**************************************", Attribute.YELLOW_TEXT()));
     }
     
     /**
@@ -97,11 +97,11 @@ public class SnifferTest implements Runnable {
         threads.add(client.start());
         Set<String> hostsToSniff = getHostsToSniff();
         // Print hosts banner
-        System.out.println(colorize("***********************************", Attribute.GREEN_TEXT()));
+        System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
         System.out.println(colorize("Listening for packets from:", Attribute.GREEN_TEXT()));
-        System.out.println(colorize("***********************************", Attribute.GREEN_TEXT()));
+        System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
         hostsToSniff.forEach(hostToSniff -> System.out.println(colorize(host, Attribute.BOLD(), Attribute.GREEN_TEXT())));
-        System.out.println(colorize("***********************************", Attribute.GREEN_TEXT()));
+        System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
         // Start to listening for packets from hosts
         for (String hostName: hostsToSniff)
             client.addHost(InetAddress.getByName(hostName), serverPort);
