@@ -1,11 +1,12 @@
-package unisinos.java.sniffer.broadcast;
+package unisinos.java.sniffer.broadcast.pcap;
 
 import io.pkts.buffer.Buffer;
 import io.pkts.buffer.Buffers;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketAddress;
-import unisinos.java.sniffer.process.ProcessExecutor;
+import unisinos.java.sniffer.broadcast.BroadcastGenericServer;
+import unisinos.java.sniffer.shell.ProcessExecutor;
 
 public class PcapBroadcastServer extends BroadcastGenericServer {
     

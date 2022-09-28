@@ -15,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import unisinos.java.sniffer.constants.SnifferConstants;
 
-public class BroadcastGenericClient implements BroadcastClient {
+public class BroadcastGenericClient implements BroadcastClient, BroadcastConstants {
     
     private final DatagramSocket clientSocket;
     private final Set<InetSocketAddress> hosts;
@@ -38,11 +38,10 @@ public class BroadcastGenericClient implements BroadcastClient {
      */
     @Override
     public void addHost(InetAddress host, int port) throws IOException {
-        byte[] sendData = "add".getBytes();
+        byte[] sendData = ACTION_ADD_LISTENER.getBytes();
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, host, port);
         clientSocket.send(sendPacket);
         hosts.add(new InetSocketAddress(host, port));
-        System.out.println("Host added [" + host.getHostAddress() + ":" + port  + "]");
     }
 
     /**
@@ -53,7 +52,7 @@ public class BroadcastGenericClient implements BroadcastClient {
      */
     @Override
     public void removeHost(InetAddress host, int port) throws IOException {
-        byte[] sendData = "remove".getBytes();
+        byte[] sendData = ACTION_REMOVE_LISTENER.getBytes();
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, host, port);
         clientSocket.send(sendPacket);
         hosts.remove(new InetSocketAddress(host, port));

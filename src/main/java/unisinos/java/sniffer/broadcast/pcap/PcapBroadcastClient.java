@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.broadcast;
+package unisinos.java.sniffer.broadcast.pcap;
 
 import io.pkts.Pcap;
 import io.pkts.PcapOutputStream;
@@ -9,10 +9,13 @@ import io.pkts.protocol.Protocol;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import unisinos.java.sniffer.broadcast.BroadcastGenericClient;
 
 public class PcapBroadcastClient extends BroadcastGenericClient {
     
@@ -57,13 +60,18 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
         }
         TransportPacket transportPacket = transportPacketOpt.get();
         IPPacket ipPacket = transportPacket.getParentPacket();
-        System.out.println("\n--------------------------------------");
-        System.out.printf("(%s) [%s] --> [%s]\n",
+        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        Date arrivalDate = new Date(packet.getArrivalTime() / 1000);
+        System.out.printf("(%s %s) [%s:%d] --> [%s:%d]\n",
+                          formatter.format(arrivalDate),
                           transportPacket.getProtocol().getName().toUpperCase(),
-                          ipPacket.getSourceIP(),
-                          ipPacket.getDestinationIP());
-        System.out.println("--------------------------------------");
-        Optional.ofNullable(transportPacket.getPayload()).ifPresent(payload -> System.out.println(payload));
+                          ipPacket.getSourceIP(), transportPacket.getSourcePort(),
+                          ipPacket.getDestinationIP(), transportPacket.getDestinationPort());
+//        ApplicationPacket applicationPacket = (ApplicationPacket) transportPacket.getNextPacket();
+//        if (Objects.nonNull(applicationPacket)) {
+//            Optional.ofNullable(applicationPacket.getPayload())
+//                    .ifPresent(payload -> System.out.println(Ansi.colorize(payload.toString(), Attribute.CYAN_TEXT())));
+//        }
     }
     
     private Optional<TransportPacket> getTransportPacket(Packet packet) throws IOException {

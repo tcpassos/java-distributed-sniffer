@@ -13,10 +13,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import unisinos.java.sniffer.constants.SnifferConstants;
 
-public class BroadcastGenericServer implements BroadcastServer {
-    
-    private static final String ACTION_ADD_LISTENER = "add";
-    private static final String ACTION_REMOVE_LISTENER = "remove";
+public class BroadcastGenericServer implements BroadcastServer, BroadcastConstants {
     
     private final DatagramSocket serverSocket;
     private final Set<SocketAddress> listeners;
