@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.shell;
+package unisinos.sniffer.shell;
 
 import java.io.IOException;
 

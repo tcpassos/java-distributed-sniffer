@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.broadcast;
+package unisinos.sniffer.broadcast;
 
 import java.io.Closeable;
 import java.io.IOException;

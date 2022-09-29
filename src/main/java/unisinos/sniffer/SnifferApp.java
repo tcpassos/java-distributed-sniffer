@@ -1,10 +1,9 @@
-package unisinos.java.sniffer;
+package unisinos.sniffer;
 
 import static com.diogonunes.jcolor.Ansi.colorize;
 import com.diogonunes.jcolor.Attribute;
 import java.io.Closeable;
 import java.io.File;
-import unisinos.java.sniffer.constants.SnifferConstants;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -21,13 +20,13 @@ import java.util.logging.Logger;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
-import unisinos.java.sniffer.broadcast.BroadcastClient;
-import unisinos.java.sniffer.broadcast.BroadcastServer;
-import unisinos.java.sniffer.broadcast.pcap.PcapBroadcastClient;
-import unisinos.java.sniffer.broadcast.pcap.PcapBroadcastServer;
+import unisinos.sniffer.broadcast.BroadcastClient;
+import unisinos.sniffer.broadcast.BroadcastServer;
+import unisinos.sniffer.broadcast.pcap.PcapBroadcastClient;
+import unisinos.sniffer.broadcast.pcap.PcapBroadcastServer;
 
-@Command(name = "Sniffer", mixinStandardHelpOptions = true)
-public class SnifferTest implements Runnable {
+@Command(name = "Distributed Sniffer", mixinStandardHelpOptions = true, version = "1.0")
+public class SnifferApp implements Runnable {
     
     // Commandline parameters
     @Option(names = { "-s", "--host" }, description = "Host to sniff") 
@@ -45,7 +44,7 @@ public class SnifferTest implements Runnable {
     
     List<Thread> threads;
 
-    public SnifferTest() {
+    public SnifferApp() {
         threads = new ArrayList<>();
     }
 
@@ -56,7 +55,7 @@ public class SnifferTest implements Runnable {
             startClient();
             for (Thread thread: threads) thread.join(); // Waits for threads to finish
         } catch (IOException | InterruptedException ex) {
-            Logger.getLogger(SnifferTest.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(SnifferApp.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -139,14 +138,14 @@ public class SnifferTest implements Runnable {
                 try {
                     closeable.close();
                 } catch (IOException ex) {
-                    Logger.getLogger(SnifferTest.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(SnifferApp.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         });
     }
     
     public static void main(String[] args) throws IOException {        
-        int exitCode = new CommandLine(new SnifferTest()).execute(args); 
+        int exitCode = new CommandLine(new SnifferApp()).execute(args); 
         System.exit(exitCode);
     }
 

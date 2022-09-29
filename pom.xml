@@ -51,7 +51,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>unisinos.java.sniffer.SnifferTest</mainClass>
+                            <mainClass>unisinos.sniffer.SnifferApp</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

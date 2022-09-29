@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.broadcast;
+package unisinos.sniffer.broadcast;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,16 +14,16 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import unisinos.java.sniffer.constants.SnifferConstants;
+import unisinos.sniffer.SnifferConstants;
 
-public class BroadcastGenericClient implements BroadcastClient, BroadcastConstants {
+public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
     
     private final DatagramSocket clientSocket;
     private final Set<InetSocketAddress> hosts;
     private final PipedOutputStream outputStream;
     private final PipedInputStream inputStream;
 
-    public BroadcastGenericClient() throws IOException {
+    public BroadcastUdpClient() throws IOException {
         this.clientSocket = new DatagramSocket();
         this.hosts = new HashSet<>();
         this.outputStream = new PipedOutputStream();
@@ -62,7 +62,7 @@ public class BroadcastGenericClient implements BroadcastClient, BroadcastConstan
                     clientSocket.receive(receivePacket);
                     outputStream.write(receivedData, receivePacket.getOffset(), receivePacket.getLength());
                 } catch (IOException ex) {
-                    Logger.getLogger(BroadcastGenericClient.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(BroadcastUdpClient.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         });

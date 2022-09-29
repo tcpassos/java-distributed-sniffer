@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.broadcast;
+package unisinos.sniffer.broadcast;
 
 public interface BroadcastConstants {
     

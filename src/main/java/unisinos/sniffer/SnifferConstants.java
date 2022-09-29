@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.constants;
+package unisinos.sniffer;
 
 public interface SnifferConstants {
     

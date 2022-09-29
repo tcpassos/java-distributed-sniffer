@@ -1,4 +1,4 @@
-package unisinos.java.sniffer.broadcast.pcap;
+package unisinos.sniffer.broadcast.pcap;
 
 import com.diogonunes.jcolor.Ansi;
 import com.diogonunes.jcolor.Attribute;
@@ -21,9 +21,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import unisinos.java.sniffer.broadcast.BroadcastGenericClient;
+import unisinos.sniffer.broadcast.BroadcastUdpClient;
 
-public class PcapBroadcastClient extends BroadcastGenericClient {
+public class PcapBroadcastClient extends BroadcastUdpClient {
     
     private File outputFile;
     private PcapOutputStream outputFileStream;
@@ -77,11 +77,6 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
                           Ansi.colorize(String.valueOf(transportPacket.getSourcePort()), getPortTextColors(transportPacket.getSourcePort())),
                           ipPacket.getDestinationIP(),
                           Ansi.colorize(String.valueOf(transportPacket.getDestinationPort()), getPortTextColors(transportPacket.getDestinationPort())));
-//        ApplicationPacket applicationPacket = (ApplicationPacket) transportPacket.getNextPacket();
-//        if (Objects.nonNull(applicationPacket)) {
-//            Optional.ofNullable(applicationPacket.getPayload())
-//                    .ifPresent(payload -> System.out.println(Ansi.colorize(payload.toString(), Attribute.CYAN_TEXT())));
-//        }
     }
     
     private Optional<TransportPacket> getTransportPacket(Packet packet) throws IOException {
@@ -95,7 +90,7 @@ public class PcapBroadcastClient extends BroadcastGenericClient {
     private Attribute[] getPortTextColors(int port) {
         Attribute[] attributes = new Attribute[2];
         int fgColor = port % 255;
-        if (Arrays.asList(1, 16, 17, 18, 234, 235, 236).contains(fgColor)) { // To dark
+        if (Arrays.asList(0, 16, 17, 18, 234, 235, 236).contains(fgColor)) { // Too dark
             fgColor = 15;
         }
         attributes[0] = Attribute.TEXT_COLOR(fgColor);
