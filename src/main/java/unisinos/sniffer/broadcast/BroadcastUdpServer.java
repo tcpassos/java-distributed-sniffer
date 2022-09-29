@@ -5,12 +5,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import unisinos.sniffer.SnifferConstants;
+import unisinos.sniffer.handler.DatagramPacketHandler;
 
 public class BroadcastUdpServer implements BroadcastServer, BroadcastConstants {
     
@@ -30,32 +27,20 @@ public class BroadcastUdpServer implements BroadcastServer, BroadcastConstants {
      */
     @Override
     public Thread start() throws IOException {
-        Thread serverThread = new Thread(() -> {
-            byte[] receiveData = new byte[SnifferConstants.MAX_BUFFER_SIZE];
-            while (true) {
-                Arrays.fill(receiveData, (byte) 0); // Clear the buffer
-                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-                try {
-                    serverSocket.receive(receivePacket);
-                    SocketAddress listenerAddr = receivePacket.getSocketAddress();
-                    String action = new String(receivePacket.getData()).trim();
-                    switch (action) {
-                        case ACTION_ADD_LISTENER:
-                            if (listeners.add(listenerAddr))
-                                System.out.println("New listener [" + listenerAddr + "]");
-                            break;
-                        case ACTION_REMOVE_LISTENER:
-                            if (listeners.remove(listenerAddr))
-                                System.out.println("Listener removed [" + listenerAddr + "]");
-                            break;
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(BroadcastUdpServer.class.getName()).log(Level.SEVERE, null, ex);
-                }
+        return new DatagramPacketHandler(serverSocket, (packet) -> {
+            SocketAddress listenerAddr = packet.getSocketAddress();
+            String action = new String(packet.getData()).trim();
+            switch (action) {
+                case ACTION_ADD_LISTENER:
+                    if (listeners.add(listenerAddr))
+                        System.out.println("New listener [" + listenerAddr + "]");
+                    break;
+                case ACTION_REMOVE_LISTENER:
+                    if (listeners.remove(listenerAddr))
+                        System.out.println("Listener removed [" + listenerAddr + "]");
+                    break;
             }
-        });
-        serverThread.start();
-        return serverThread;
+        }).handle();
     }
     
     /**
@@ -80,7 +65,7 @@ public class BroadcastUdpServer implements BroadcastServer, BroadcastConstants {
 
     @Override
     public void close() throws IOException {
-        // TODO
+        serverSocket.close();
     }
 
 }

@@ -4,7 +4,9 @@ import static com.diogonunes.jcolor.Ansi.colorize;
 import com.diogonunes.jcolor.Attribute;
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -35,9 +37,9 @@ public class SnifferApp implements Runnable {
     String hostFile = "";
     @Option(names = { "-p", "--port" }, description = "Server port (default=" + SnifferConstants.SERVER_DEFAULT_PORT + ")")
     int serverPort = SnifferConstants.SERVER_DEFAULT_PORT;
-    @Option(names = { "--no-serve" }, description = "Does not act as a server visible to other hosts") 
+    @Option(names = { "-n", "--no-serve" }, description = "Does not act as a server visible to other hosts") 
     boolean noServe = false;
-    @Option(names = { "-o", "--output" }, description = "Output file") 
+    @Option(names = { "-o", "--output" }, description = "Output file. Standard input is used if ouput is \"-\"")
     String output = "";
     @Option(names = { "-c", "--command" }, description = "Command to perform packet capture (default=tcpdump)") 
     String captureCommand = "tcpdump -w - -U --no-promiscuous-mode host $(hostname -I | awk '{print $1}') and port not " + serverPort;
@@ -91,7 +93,8 @@ public class SnifferApp implements Runnable {
         if (output.isEmpty()) {
             client = new PcapBroadcastClient();
         } else {
-            client = new PcapBroadcastClient(new File(output));
+            OutputStream rawPcapOutput = output.equals("-") ? System.out : new FileOutputStream(new File(output));
+            client = new PcapBroadcastClient(rawPcapOutput);
         }
         handleCloseOnShutdown(client);
         threads.add(client.start());

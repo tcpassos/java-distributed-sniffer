@@ -3,7 +3,6 @@ package unisinos.sniffer.broadcast.pcap;
 import com.diogonunes.jcolor.Ansi;
 import com.diogonunes.jcolor.Attribute;
 import io.pkts.Pcap;
-import io.pkts.PcapOutputStream;
 import io.pkts.buffer.Buffer;
 import io.pkts.buffer.Buffers;
 import io.pkts.frame.PcapGlobalHeader;
@@ -11,13 +10,14 @@ import io.pkts.packet.IPPacket;
 import io.pkts.packet.Packet;
 import io.pkts.packet.TransportPacket;
 import io.pkts.protocol.Protocol;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,33 +25,42 @@ import unisinos.sniffer.broadcast.BroadcastUdpClient;
 
 public class PcapBroadcastClient extends BroadcastUdpClient {
     
-    private File outputFile;
-    private PcapOutputStream outputFileStream;
-
-    public PcapBroadcastClient(File outputFile) throws IOException {
-        super();
-        this.outputFile = outputFile;
-        handlePackets();
-    }
-
     public PcapBroadcastClient() throws IOException {
         super();
-        handlePackets();
+        PipedOutputStream pcapOutputStream = new PipedOutputStream();
+        PipedInputStream pcapInputStream = new PipedInputStream();
+        // Connect the OutputStream used to write incoming packets with the InputStream used to display packets in the console
+        pcapInputStream.connect(pcapOutputStream);
+        writeDefaultPcapHeader(pcapOutputStream);
+        // For each received packet, write to the stream that will be read in the waitTodisplayPackets() method
+        super.onPacketReceived((packet) -> {
+            try {
+                pcapOutputStream.write(packet.getData(), packet.getOffset(), packet.getLength());
+            } catch (IOException ex) {
+                Logger.getLogger(PcapBroadcastClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+        waitTodisplayPackets(pcapInputStream);
     }
 
-    private void handlePackets() throws IOException {
+    public PcapBroadcastClient(OutputStream rawOutputStream) throws IOException {
+        super();
+        writeDefaultPcapHeader(rawOutputStream);
+        // For each packet received, write to OutputStream received in constructor
+        super.onPacketReceived((packet) -> {
+            try {
+                rawOutputStream.write(packet.getData(), packet.getOffset(), packet.getLength());
+            } catch (IOException ex) {
+                Logger.getLogger(PcapBroadcastClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+    }
+
+    private void waitTodisplayPackets(InputStream pcapInputStream) throws IOException {
         new Thread(() -> {
             try {
-                // Write pcap default header
-                super.getOutputStream().write(getDefaultPcapHeader());
-                Pcap pcap = Pcap.openStream(super.getInputStream());
-                if (Objects.nonNull(outputFile)) {
-                    outputFileStream = pcap.createOutputStream(new FileOutputStream(outputFile));
-                }
+                Pcap pcap = Pcap.openStream(pcapInputStream);
                 pcap.loop((packet) -> {
-                    if (Objects.nonNull(outputFileStream)) {
-                        outputFileStream.write(packet);
-                    }
                     printPacket(packet);
                     return true;
                 });
@@ -90,7 +99,7 @@ public class PcapBroadcastClient extends BroadcastUdpClient {
     private Attribute[] getPortTextColors(int port) {
         Attribute[] attributes = new Attribute[2];
         int fgColor = port % 255;
-        if (Arrays.asList(0, 16, 17, 18, 234, 235, 236).contains(fgColor)) { // Too dark
+        if (Arrays.asList(0, 16, 17, 18, 232, 233, 234, 235, 236).contains(fgColor)) { // Too dark
             fgColor = 15;
         }
         attributes[0] = Attribute.TEXT_COLOR(fgColor);
@@ -98,7 +107,7 @@ public class PcapBroadcastClient extends BroadcastUdpClient {
         return attributes;
     }
     
-    private byte[] getDefaultPcapHeader() throws IOException {
+    private void writeDefaultPcapHeader(OutputStream outputStream) throws IOException {
         Buffer body = Buffers.createBuffer(20);
         body.setUnsignedByte(0, (short) 2);
         body.setUnsignedByte(2, (short) 4);
@@ -111,15 +120,7 @@ public class PcapBroadcastClient extends BroadcastUdpClient {
         Buffer header = Buffers.createBuffer(24);
         header.write(PcapGlobalHeader.MAGIC_LITTLE_ENDIAN);
         header.write(body.getRawArray());
-        return header.getRawArray();
-    }
-
-    @Override
-    public void close() throws IOException {
-        super.close();
-        if (Objects.nonNull(outputFileStream)) {
-            outputFileStream.close();
-        }
+        outputStream.write(header.getRawArray());
     }
 
 }

@@ -1,34 +1,36 @@
 package unisinos.sniffer.broadcast;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import unisinos.sniffer.SnifferConstants;
+import java.util.function.Consumer;
+import unisinos.sniffer.handler.DatagramPacketHandler;
 
 public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
     
     private final DatagramSocket clientSocket;
     private final Set<InetSocketAddress> hosts;
-    private final PipedOutputStream outputStream;
-    private final PipedInputStream inputStream;
+    private Consumer<DatagramPacket> onPacketReceivedConsumer;
 
     public BroadcastUdpClient() throws IOException {
         this.clientSocket = new DatagramSocket();
         this.hosts = new HashSet<>();
-        this.outputStream = new PipedOutputStream();
-        this.inputStream = new PipedInputStream();
-        inputStream.connect(outputStream);
+        this.onPacketReceivedConsumer = (packet) -> System.out.println("Received a packet from " + packet.getAddress());
+    }
+
+    /**
+     * Start listening to the broadcast
+     *
+     * @return {@code Thread}
+     * @throws IOException
+     */
+    @Override
+    public Thread start() throws IOException {
+        return new DatagramPacketHandler(clientSocket, onPacketReceivedConsumer).handle();
     }
     
     /**
@@ -44,48 +46,31 @@ public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
         clientSocket.send(sendPacket);
         hosts.add(new InetSocketAddress(host, port));
     }
+    
+    /**
+     * Sets the handler that will process incoming packets
+     *
+     * @param onPacketReceivedConsumer Handler
+     */
+    public void onPacketReceived(Consumer<DatagramPacket> onPacketReceivedConsumer) {
+        this.onPacketReceivedConsumer = onPacketReceivedConsumer;
+    }
 
     /**
-     * Start listening to the broadcast
+     * Send a message to all connected hosts to remove this listener
      *
-     * @return {@code Thread}
      * @throws IOException
      */
     @Override
-    public Thread start() throws IOException {
-        Thread clientThread = new Thread(() -> {
-            byte[] receivedData = new byte[SnifferConstants.MAX_BUFFER_SIZE];
-            while (true) {
-                Arrays.fill(receivedData, (byte) 0);
-                DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
-                try {
-                    clientSocket.receive(receivePacket);
-                    outputStream.write(receivedData, receivePacket.getOffset(), receivePacket.getLength());
-                } catch (IOException ex) {
-                    Logger.getLogger(BroadcastUdpClient.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-        });
-        clientThread.start();
-        return clientThread;
-    }
-    
-    public InputStream getInputStream() {
-        return inputStream;
-    }
-
-    public OutputStream getOutputStream() {
-        return outputStream;
-    }
-
-    @Override
     public void close() throws IOException {
-        byte[] sendData = ACTION_REMOVE_LISTENER.getBytes();
-        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
-        for (InetSocketAddress host: hosts) {
-            sendPacket.setAddress(host.getAddress());
-            sendPacket.setPort(host.getPort());
-            clientSocket.send(sendPacket);
+        try (clientSocket) {
+            byte[] sendData = ACTION_REMOVE_LISTENER.getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length);
+            for (InetSocketAddress host: hosts) {
+                sendPacket.setAddress(host.getAddress());
+                sendPacket.setPort(host.getPort());
+                clientSocket.send(sendPacket);
+            }
         }
     }
 
