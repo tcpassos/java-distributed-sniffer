@@ -24,11 +24,10 @@ Usage: Distributed Sniffer [-hnV] [-c=<captureCommand>] [-o=<output>]
 
 ## Using Docker to test
 ```console
-docker container run -it --name <name> --rm -v "$PWD":/usr/src/sniffer -w /usr/src/sniffer 
+docker container run -it --name <name> --rm -v "$PWD":/usr/src/sniffer -w /usr/src/sniffer bitnami/java
 ```
 Inside the container:
 ```console
-bitnami/java
 apt update && apt install tcpdump -y
 java -jar distributed-sniffer.jar <<options>>
 ```
