@@ -24,10 +24,14 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import unisinos.sniffer.broadcast.BroadcastClient;
 import unisinos.sniffer.broadcast.BroadcastServer;
+import unisinos.sniffer.broadcast.udp.BroadcastUdpServer;
 import unisinos.sniffer.broadcast.pcap.PcapBroadcastClient;
 import unisinos.sniffer.broadcast.pcap.PcapBroadcastServer;
+import unisinos.sniffer.broadcast.tcp.BroadcastTcpClient;
+import unisinos.sniffer.broadcast.tcp.BroadcastTcpServer;
+import unisinos.sniffer.broadcast.udp.BroadcastUdpClient;
 
-@Command(name = "Distributed Sniffer", mixinStandardHelpOptions = true, version = "1.0")
+@Command(name = "distributed-sniffer", mixinStandardHelpOptions = true, version = "1.0")
 public class SnifferApp implements Runnable {
     
     // Commandline parameters
@@ -37,6 +41,8 @@ public class SnifferApp implements Runnable {
     String hostFile = "";
     @Option(names = { "-p", "--port" }, description = "Server port (default=" + SnifferConstants.SERVER_DEFAULT_PORT + ")")
     int serverPort = SnifferConstants.SERVER_DEFAULT_PORT;
+    @Option(names = { "-P", "--protocol" }, description = "protocol used for sending messages between client and server (default=" + SnifferConstants.PROTOCOL_UDP + ")")
+    String protocol = SnifferConstants.PROTOCOL_UDP;
     @Option(names = { "-n", "--no-serve" }, description = "Does not act as a server visible to other hosts") 
     boolean noServe = false;
     @Option(names = { "-o", "--output" }, description = "Output file. Standard input is used if ouput is \"-\"")
@@ -70,12 +76,23 @@ public class SnifferApp implements Runnable {
         if (noServe) {
             return;
         }
-        BroadcastServer server = new PcapBroadcastServer(serverPort, captureCommand);
-        handleCloseOnShutdown(server);
-        threads.add(server.start());
+        BroadcastServer server;
+        switch (protocol) {
+            case SnifferConstants.PROTOCOL_UDP:
+                server = new BroadcastUdpServer(serverPort);
+                break;
+            case SnifferConstants.PROTOCOL_TCP:
+                server = new BroadcastTcpServer(serverPort);
+                break;
+            default:
+                throw new IllegalArgumentException("Protocol not implemented: " + protocol);
+        }
+        BroadcastServer pcapServer = new PcapBroadcastServer(server, captureCommand);
+        handleCloseOnShutdown(pcapServer);
+        threads.add(pcapServer.start());
         // Print the local IP used to serve
         System.out.println(colorize("**************************************", Attribute.YELLOW_TEXT()));
-        System.out.printf (colorize("Sending packets at %s:%d\n", Attribute.YELLOW_TEXT()), getLocalIp(), serverPort);
+        System.out.printf (colorize("(%s) Sending packets at %s:%d\n", Attribute.YELLOW_TEXT()), protocol, getLocalIp(), serverPort);
         System.out.println(colorize("**************************************", Attribute.YELLOW_TEXT()));
     }
     
@@ -89,24 +106,35 @@ public class SnifferApp implements Runnable {
         if (hostsToSniff.isEmpty()) {
             return;
         }
-        BroadcastClient client;
+        PcapBroadcastClient pcapClient;
         if (output.isEmpty()) {
-            client = new PcapBroadcastClient();
+            pcapClient = new PcapBroadcastClient(getClient());
         } else {
             OutputStream rawPcapOutput = output.equals("-") ? System.out : new FileOutputStream(new File(output));
-            client = new PcapBroadcastClient(rawPcapOutput);
+            pcapClient = new PcapBroadcastClient(getClient(), rawPcapOutput);
         }
-        handleCloseOnShutdown(client);
-        threads.add(client.start());
+        handleCloseOnShutdown(pcapClient);
+        threads.add(pcapClient.start());
         // Print hosts banner
-        System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
+        System.out.println(colorize("*****************************************", Attribute.GREEN_TEXT()));
         System.out.println(colorize("Listening for packets from:", Attribute.GREEN_TEXT()));
-        System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
+        System.out.println(colorize("*****************************************", Attribute.GREEN_TEXT()));
         hostsToSniff.forEach(hostToSniff -> System.out.println(colorize(hostToSniff, Attribute.GREEN_TEXT())));
-        System.out.println(colorize("**************************************", Attribute.GREEN_TEXT()));
+        System.out.println(colorize("*****************************************", Attribute.GREEN_TEXT()));
         // Start to listening for packets from hosts
         for (String hostName: hostsToSniff)
-            client.addHost(InetAddress.getByName(hostName), serverPort);
+            pcapClient.addHost(InetAddress.getByName(hostName), serverPort);
+    }
+    
+    private BroadcastClient getClient() throws IOException {
+        switch (protocol) {
+            case SnifferConstants.PROTOCOL_UDP:
+                return new BroadcastUdpClient();
+            case SnifferConstants.PROTOCOL_TCP:
+                return new BroadcastTcpClient();
+            default:
+                throw new IllegalArgumentException("Protocol not implemented: " + protocol);
+        }
     }
     
     private String getLocalIp() {

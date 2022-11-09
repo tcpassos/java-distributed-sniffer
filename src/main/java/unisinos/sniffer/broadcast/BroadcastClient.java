@@ -3,6 +3,7 @@ package unisinos.sniffer.broadcast;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
+import unisinos.sniffer.handler.BufferHandler;
 
 public interface BroadcastClient extends Closeable {
     
@@ -21,5 +22,12 @@ public interface BroadcastClient extends Closeable {
      * @throws IOException
      */
     public void addHost(InetAddress host, int port) throws IOException;
+    
+    /**
+     * Assigns an event that will consume the information received from the server
+     *
+     * @param handler Data handler
+     */
+    public void onDataReceived(BufferHandler handler);
 
 }

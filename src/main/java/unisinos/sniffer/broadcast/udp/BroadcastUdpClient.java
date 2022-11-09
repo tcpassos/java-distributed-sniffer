@@ -1,25 +1,30 @@
-package unisinos.sniffer.broadcast;
+package unisinos.sniffer.broadcast.udp;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Consumer;
-import unisinos.sniffer.handler.DatagramPacketHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import unisinos.sniffer.SnifferConstants;
+import unisinos.sniffer.broadcast.BroadcastClient;
+import unisinos.sniffer.broadcast.BroadcastConstants;
+import unisinos.sniffer.handler.BufferHandler;
 
 public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
     
     private final DatagramSocket clientSocket;
     private final Set<InetSocketAddress> hosts;
-    private Consumer<DatagramPacket> onPacketReceivedConsumer;
+    private BufferHandler onPacketReceived;
 
     public BroadcastUdpClient() throws IOException {
         this.clientSocket = new DatagramSocket();
         this.hosts = new HashSet<>();
-        this.onPacketReceivedConsumer = (packet) -> System.out.println("Received a packet from " + packet.getAddress());
+        this.onPacketReceived = (packetBytes) -> System.out.println("Received " + packetBytes.length + " bytes");
     }
 
     /**
@@ -30,7 +35,23 @@ public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
      */
     @Override
     public Thread start() throws IOException {
-        return new DatagramPacketHandler(clientSocket, onPacketReceivedConsumer).handle();
+        Thread clientThread = new Thread(() -> {
+            byte[] receivedData = new byte[SnifferConstants.MAX_BUFFER_SIZE];
+            while (true) {
+                Arrays.fill(receivedData, (byte) 0); // Clear the buffer
+                DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
+                try {
+                    clientSocket.receive(receivePacket);
+                    // Creates a copy of the received packet data because the returned array will always have a fixed value
+                    byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                    onPacketReceived.handle(data);
+                } catch (IOException ex) {
+                    Logger.getLogger(BroadcastUdpClient.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
+        clientThread.start();
+        return clientThread;
     }
     
     /**
@@ -46,14 +67,15 @@ public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
         clientSocket.send(sendPacket);
         hosts.add(new InetSocketAddress(host, port));
     }
-    
+
     /**
      * Sets the handler that will process incoming packets
      *
-     * @param onPacketReceivedConsumer Handler
+     * @param handler Handler
      */
-    public void onPacketReceived(Consumer<DatagramPacket> onPacketReceivedConsumer) {
-        this.onPacketReceivedConsumer = onPacketReceivedConsumer;
+    @Override
+    public void onDataReceived(BufferHandler handler) {
+        this.onPacketReceived = handler;
     }
 
     /**
