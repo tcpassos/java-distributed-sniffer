@@ -10,32 +10,36 @@ import io.pkts.packet.IPPacket;
 import io.pkts.packet.Packet;
 import io.pkts.packet.TransportPacket;
 import io.pkts.protocol.Protocol;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.net.InetAddress;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import unisinos.sniffer.broadcast.BroadcastUdpClient;
+import unisinos.sniffer.broadcast.BroadcastClient;
 
-public class PcapBroadcastClient extends BroadcastUdpClient {
+public class PcapBroadcastClient implements Closeable {
     
-    public PcapBroadcastClient() throws IOException {
-        super();
+    private final BroadcastClient client;
+    
+    public PcapBroadcastClient(BroadcastClient client) throws IOException {
+        this.client = client;
+        // Connect the OutputStream used to write incoming packets with the InputStream used to display packets in the console
         PipedOutputStream pcapOutputStream = new PipedOutputStream();
         PipedInputStream pcapInputStream = new PipedInputStream();
-        // Connect the OutputStream used to write incoming packets with the InputStream used to display packets in the console
         pcapInputStream.connect(pcapOutputStream);
         writeDefaultPcapHeader(pcapOutputStream);
         // For each received packet, write to the stream that will be read in the waitTodisplayPackets() method
-        super.onPacketReceived((packet) -> {
+        client.onDataReceived((packetBytes) -> {
             try {
-                pcapOutputStream.write(packet.getData(), packet.getOffset(), packet.getLength());
+                pcapOutputStream.write(packetBytes);
             } catch (IOException ex) {
                 Logger.getLogger(PcapBroadcastClient.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -43,17 +47,30 @@ public class PcapBroadcastClient extends BroadcastUdpClient {
         waitTodisplayPackets(pcapInputStream);
     }
 
-    public PcapBroadcastClient(OutputStream rawOutputStream) throws IOException {
-        super();
+    public PcapBroadcastClient(BroadcastClient client, OutputStream rawOutputStream) throws IOException {
+        this.client = client;
         writeDefaultPcapHeader(rawOutputStream);
         // For each packet received, write to OutputStream received in constructor
-        super.onPacketReceived((packet) -> {
+        client.onDataReceived((packetBytes) -> {
             try {
-                rawOutputStream.write(packet.getData(), packet.getOffset(), packet.getLength());
+                rawOutputStream.write(packetBytes);
             } catch (IOException ex) {
                 Logger.getLogger(PcapBroadcastClient.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
+    }
+
+    public Thread start() throws IOException {
+        return client.start();
+    }
+
+    public void addHost(InetAddress host, int port) throws IOException {
+        client.addHost(host, port);
+    }
+
+    @Override
+    public void close() throws IOException {
+        client.close();
     }
 
     private void waitTodisplayPackets(InputStream pcapInputStream) throws IOException {
