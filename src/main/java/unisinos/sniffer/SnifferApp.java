@@ -27,6 +27,8 @@ import unisinos.sniffer.broadcast.BroadcastServer;
 import unisinos.sniffer.broadcast.udp.BroadcastUdpServer;
 import unisinos.sniffer.broadcast.pcap.PcapBroadcastClient;
 import unisinos.sniffer.broadcast.pcap.PcapBroadcastServer;
+import unisinos.sniffer.broadcast.sctp.BroadcastSctpClient;
+import unisinos.sniffer.broadcast.sctp.BroadcastSctpServer;
 import unisinos.sniffer.broadcast.tcp.BroadcastTcpClient;
 import unisinos.sniffer.broadcast.tcp.BroadcastTcpServer;
 import unisinos.sniffer.broadcast.udp.BroadcastUdpClient;
@@ -84,6 +86,9 @@ public class SnifferApp implements Runnable {
             case SnifferConstants.PROTOCOL_TCP:
                 server = new BroadcastTcpServer(serverPort);
                 break;
+            case SnifferConstants.PROTOCOL_SCTP:
+                server = new BroadcastSctpServer(serverPort);
+                break;
             default:
                 throw new IllegalArgumentException("Protocol not implemented: " + protocol);
         }
@@ -132,6 +137,8 @@ public class SnifferApp implements Runnable {
                 return new BroadcastUdpClient();
             case SnifferConstants.PROTOCOL_TCP:
                 return new BroadcastTcpClient();
+            case SnifferConstants.PROTOCOL_SCTP:
+                return new BroadcastSctpClient();
             default:
                 throw new IllegalArgumentException("Protocol not implemented: " + protocol);
         }

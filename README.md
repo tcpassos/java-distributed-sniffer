@@ -24,12 +24,11 @@ Usage: Distributed Sniffer [-hnV] [-c=<captureCommand>] [-o=<output>]
 
 ## Using Docker to test
 ```console
-docker container run -it --name <name> --rm -v "$PWD":/usr/src/sniffer -w /usr/src/sniffer bitnami/java
+docker run --name <name> --rm tcpassos/distributed-sniffer -h
 ```
-Inside the container:
+Simulating requests:
 ```console
-apt update && apt install tcpdump -y
-java -jar distributed-sniffer.jar <<options>>
+docker exec <name> /usr/bin/curl google.com
 ```
 We can analyze packet traffic between containers with tcpdump running in another container:
 ```console
