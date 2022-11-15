@@ -1,4 +1,4 @@
-package unisinos.sniffer.broadcast.pcap;
+package unisinos.sniffer.pcap;
 
 import java.io.IOException;
 import java.io.InputStream;

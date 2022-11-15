@@ -56,6 +56,7 @@ public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
     
     /**
      * Add a host to receive messages from
+     *
      * @param host Host
      * @param port Port
      * @throws IOException

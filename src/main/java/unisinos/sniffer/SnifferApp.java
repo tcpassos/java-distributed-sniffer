@@ -25,13 +25,15 @@ import picocli.CommandLine.Option;
 import unisinos.sniffer.broadcast.BroadcastClient;
 import unisinos.sniffer.broadcast.BroadcastServer;
 import unisinos.sniffer.broadcast.udp.BroadcastUdpServer;
-import unisinos.sniffer.broadcast.pcap.PcapBroadcastClient;
-import unisinos.sniffer.broadcast.pcap.PcapBroadcastServer;
+import unisinos.sniffer.pcap.PcapPromptBufferHandler;
+import unisinos.sniffer.pcap.PcapBroadcastServer;
 import unisinos.sniffer.broadcast.sctp.BroadcastSctpClient;
 import unisinos.sniffer.broadcast.sctp.BroadcastSctpServer;
 import unisinos.sniffer.broadcast.tcp.BroadcastTcpClient;
 import unisinos.sniffer.broadcast.tcp.BroadcastTcpServer;
 import unisinos.sniffer.broadcast.udp.BroadcastUdpClient;
+import unisinos.sniffer.handler.BufferHandler;
+import unisinos.sniffer.pcap.PcapRawBufferHandler;
 
 @Command(name = "distributed-sniffer", mixinStandardHelpOptions = true, version = "1.0")
 public class SnifferApp implements Runnable {
@@ -111,15 +113,9 @@ public class SnifferApp implements Runnable {
         if (hostsToSniff.isEmpty()) {
             return;
         }
-        PcapBroadcastClient pcapClient;
-        if (output.isEmpty()) {
-            pcapClient = new PcapBroadcastClient(getClient());
-        } else {
-            OutputStream rawPcapOutput = output.equals("-") ? System.out : new FileOutputStream(new File(output));
-            pcapClient = new PcapBroadcastClient(getClient(), rawPcapOutput);
-        }
-        handleCloseOnShutdown(pcapClient);
-        threads.add(pcapClient.start());
+        BroadcastClient client = getClient();
+        handleCloseOnShutdown(client);
+        threads.add(client.start());
         // Print hosts banner
         System.out.println(colorize("*****************************************", Attribute.GREEN_TEXT()));
         System.out.println(colorize("Listening for packets from:", Attribute.GREEN_TEXT()));
@@ -128,20 +124,33 @@ public class SnifferApp implements Runnable {
         System.out.println(colorize("*****************************************", Attribute.GREEN_TEXT()));
         // Start to listening for packets from hosts
         for (String hostName: hostsToSniff)
-            pcapClient.addHost(InetAddress.getByName(hostName), serverPort);
+            client.addHost(InetAddress.getByName(hostName), serverPort);
     }
     
     private BroadcastClient getClient() throws IOException {
+        BroadcastClient client;
+        BufferHandler handler;
         switch (protocol) {
             case SnifferConstants.PROTOCOL_UDP:
-                return new BroadcastUdpClient();
+                client = new BroadcastUdpClient();
+                break;
             case SnifferConstants.PROTOCOL_TCP:
-                return new BroadcastTcpClient();
+                client = new BroadcastTcpClient();
+                break;
             case SnifferConstants.PROTOCOL_SCTP:
-                return new BroadcastSctpClient();
+                client = new BroadcastSctpClient();
+                break;
             default:
                 throw new IllegalArgumentException("Protocol not implemented: " + protocol);
         }
+        if (output.isEmpty()) {
+            handler = new PcapPromptBufferHandler();
+        } else {
+            OutputStream rawPcapOutput = output.equals("-") ? System.out : new FileOutputStream(new File(output));
+            handler = new PcapRawBufferHandler(rawPcapOutput);
+        }
+        client.onDataReceived(handler);
+        return client;
     }
     
     private String getLocalIp() {

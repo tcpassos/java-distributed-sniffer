@@ -19,6 +19,12 @@ public class BroadcastTcpServer implements BroadcastServer {
         this.clientSockets = new ArrayList<>();
     }
 
+    /**
+     * Starts a thread that will wait for listeners that will be used for data broadcast
+     *
+     * @return {@code Thread}
+     * @throws IOException
+     */
     @Override
     public Thread start() throws IOException {
         Thread serverThread = new Thread(() -> {
@@ -36,6 +42,12 @@ public class BroadcastTcpServer implements BroadcastServer {
         return serverThread;
     }
 
+    /**
+     * Send a packet to all listening addresses
+     *
+     * @param data Data that will be sent to listeners
+     * @param len Data length
+     */
     @Override
     public void send(byte[] data, int len) {
         List<Socket> disconnectedClients = new ArrayList<>();
@@ -54,10 +66,11 @@ public class BroadcastTcpServer implements BroadcastServer {
 
     @Override
     public void close() throws IOException {
-        for (Socket clientSocket : clientSockets) {
-            clientSocket.close();
+        try (serverSocket) {
+            for (Socket clientSocket : clientSockets) {
+                clientSocket.close();
+            }
         }
-        serverSocket.close();
     }
     
 }

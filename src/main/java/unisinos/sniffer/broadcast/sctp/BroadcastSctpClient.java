@@ -1,58 +1,75 @@
 package unisinos.sniffer.broadcast.sctp;
 
-import com.sun.nio.sctp.AbstractNotificationHandler;
-import com.sun.nio.sctp.AssociationChangeNotification;
-import static com.sun.nio.sctp.AssociationChangeNotification.AssocChangeEvent.COMM_UP;
-import com.sun.nio.sctp.HandlerResult;
 import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.NotificationHandler;
 import com.sun.nio.sctp.SctpChannel;
-import com.sun.nio.sctp.ShutdownNotification;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import unisinos.sniffer.SnifferConstants;
 import unisinos.sniffer.broadcast.BroadcastClient;
 import unisinos.sniffer.handler.BufferHandler;
+import unisinos.sniffer.handler.BufferHandlers;
 
 public class BroadcastSctpClient implements BroadcastClient {
     
     private final List<SctpChannel> hostChannels;
     private BufferHandler onPacketReceived;
+    private boolean isClosed;
 
     public BroadcastSctpClient() {
         this.hostChannels = new ArrayList<>();
-        this.onPacketReceived = (packetBytes) -> System.out.println("Received " + packetBytes.length + " bytes");
+        this.onPacketReceived = BufferHandlers.RECEIVED_BYTES_MESSAGE;
     }
 
+    /**
+     * Start listening to the broadcast
+     *
+     * @return {@code Thread}
+     * @throws IOException
+     */
     @Override
     public Thread start() throws IOException {
-        // TODO: Refatorar estrutura da interface de cliente para não obrigar uma thread aqui
         Thread clientThread = new Thread(() -> {
-            while(true) { }
+            while(!isClosed) { }
         });
         clientThread.start();
         return clientThread;
     }
 
+    /**
+     * Add a host to receive messages from
+     *
+     * @param host Host
+     * @param port Port
+     * @throws IOException
+     */
     @Override
     public void addHost(InetAddress host, int port) throws IOException {
+        // Opens an SCTP channel with the host address
         SctpChannel hostChannel = SctpChannel.open(new InetSocketAddress(host, port), 0, 0);
         hostChannels.add(hostChannel);
         new Thread(() -> {
-            AssociationHandler assocHandler = new AssociationHandler();
+            // Object responsible for handling host association connection and disconnection events
+            NotificationHandler assocHandler = new SctpAssociationHandler(host, port);
             ByteBuffer buffer = ByteBuffer.allocate(SnifferConstants.MAX_BUFFER_SIZE);
             MessageInfo messageInfo;
             while (true) {
                 try {
+                    // Clears the buffer and waits for the next message from the host
                     buffer.clear();
                     messageInfo = hostChannel.receive(buffer, System.out, assocHandler);
+                    // If the message is null it could mean that the host is no longer live
+                    if (Objects.isNull(messageInfo)) {
+                        break;
+                    }
                     onPacketReceived.handle(Arrays.copyOf(buffer.array(), messageInfo.bytes()));
                 } catch (IOException ex) {
                     Logger.getLogger(BroadcastSctpClient.class.getName()).log(Level.SEVERE, null, ex);
@@ -61,36 +78,28 @@ public class BroadcastSctpClient implements BroadcastClient {
         }).start();
     }
 
+    /**
+     * Sets the handler that will process incoming packets
+     *
+     * @param handler Handler
+     */
     @Override
     public void onDataReceived(BufferHandler handler) {
         this.onPacketReceived = handler;
     }
 
+    /**
+     * Closes SCTP channels of all connected hosts
+     *
+     * @throws IOException
+     */
     @Override
     public void close() throws IOException {
         for (SctpChannel hostChannel : hostChannels) {
             hostChannel.close();
         }
+        isClosed = true;
     }
-    
-    static class AssociationHandler extends AbstractNotificationHandler<PrintStream> {
-
-      @Override
-      public HandlerResult handleNotification(AssociationChangeNotification not, PrintStream stream) {
-          if (not.event().equals(COMM_UP)) {
-              int outbound = not.association().maxOutboundStreams();
-              int inbound = not.association().maxInboundStreams();
-              stream.printf("New association setup with %d outbound streams, and %d inbound streams.\n", outbound, inbound);
-          }
-          return HandlerResult.CONTINUE;
-      }
-
-      @Override
-      public HandlerResult handleNotification(ShutdownNotification not, PrintStream stream) {
-          stream.printf("The association has been shutdown.\n");
-          return HandlerResult.RETURN;
-      }
-  }
     
 }
 
