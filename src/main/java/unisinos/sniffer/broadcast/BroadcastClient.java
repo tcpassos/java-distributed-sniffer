@@ -3,7 +3,7 @@ package unisinos.sniffer.broadcast;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
-import unisinos.sniffer.handler.BufferHandler;
+import unisinos.sniffer.buffer.BufferHandler;
 
 public interface BroadcastClient extends Closeable {
     

@@ -6,6 +6,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -14,6 +15,7 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,16 +28,17 @@ import unisinos.sniffer.broadcast.BroadcastClient;
 import unisinos.sniffer.broadcast.BroadcastServer;
 import unisinos.sniffer.broadcast.udp.BroadcastUdpServer;
 import unisinos.sniffer.pcap.PcapPromptBufferHandler;
-import unisinos.sniffer.pcap.PcapBroadcastServer;
 import unisinos.sniffer.broadcast.sctp.BroadcastSctpClient;
 import unisinos.sniffer.broadcast.sctp.BroadcastSctpServer;
 import unisinos.sniffer.broadcast.tcp.BroadcastTcpClient;
 import unisinos.sniffer.broadcast.tcp.BroadcastTcpServer;
 import unisinos.sniffer.broadcast.udp.BroadcastUdpClient;
-import unisinos.sniffer.handler.BufferHandler;
+import unisinos.sniffer.buffer.BufferHandler;
 import unisinos.sniffer.pcap.PcapRawBufferHandler;
+import unisinos.sniffer.protocol.Protocol;
+import unisinos.sniffer.shell.ProcessExecutor;
 
-@Command(name = "distributed-sniffer", mixinStandardHelpOptions = true, version = "1.0")
+@Command(name = "distributed-sniffer", mixinStandardHelpOptions = true, version = "1.1")
 public class SnifferApp implements Runnable {
     
     // Commandline parameters
@@ -45,8 +48,8 @@ public class SnifferApp implements Runnable {
     String hostFile = "";
     @Option(names = { "-p", "--port" }, description = "Server port (default=" + SnifferConstants.SERVER_DEFAULT_PORT + ")")
     int serverPort = SnifferConstants.SERVER_DEFAULT_PORT;
-    @Option(names = { "-P", "--protocol" }, description = "protocol used for sending messages between client and server (default=" + SnifferConstants.PROTOCOL_UDP + ")")
-    String protocol = SnifferConstants.PROTOCOL_UDP;
+    @Option(names = { "-P", "--protocol" }, description = "protocol used for sending messages between client and server ([UDP], TCP, SCTP)")
+    String protocolName = "UDP";
     @Option(names = { "-n", "--no-serve" }, description = "Does not act as a server visible to other hosts") 
     boolean noServe = false;
     @Option(names = { "-o", "--output" }, description = "Output file. Standard input is used if ouput is \"-\"")
@@ -55,6 +58,7 @@ public class SnifferApp implements Runnable {
     String captureCommand = "tcpdump -w - -U --no-promiscuous-mode host $(hostname -I | awk '{print $1}') and port not " + serverPort;
     
     List<Thread> threads;
+    Protocol protocol;
 
     public SnifferApp() {
         threads = new ArrayList<>();
@@ -63,6 +67,7 @@ public class SnifferApp implements Runnable {
     @Override
     public void run() {
         try {
+            protocol = Protocol.parse(protocolName);
             startServer();
             startClient();
             for (Thread thread: threads) thread.join(); // Waits for threads to finish
@@ -82,21 +87,38 @@ public class SnifferApp implements Runnable {
         }
         BroadcastServer server;
         switch (protocol) {
-            case SnifferConstants.PROTOCOL_UDP:
+            case UDP:
                 server = new BroadcastUdpServer(serverPort);
                 break;
-            case SnifferConstants.PROTOCOL_TCP:
+            case TCP:
                 server = new BroadcastTcpServer(serverPort);
                 break;
-            case SnifferConstants.PROTOCOL_SCTP:
+            case SCTP:
                 server = new BroadcastSctpServer(serverPort);
                 break;
             default:
-                throw new IllegalArgumentException("Protocol not implemented: " + protocol);
+                throw new AssertionError();
         }
-        BroadcastServer pcapServer = new PcapBroadcastServer(server, captureCommand);
-        handleCloseOnShutdown(pcapServer);
-        threads.add(pcapServer.start());
+        handleCloseOnShutdown(server);
+        threads.add(server.start());
+        // Opens a input stream with the packet capture process output
+        InputStream captureInputStream = ProcessExecutor.getShellProcess(captureCommand)
+                                                        .getInputStream();
+        // Prepare to send packets to listeners when it arrives
+        byte[] data = new byte[SnifferConstants.MAX_BUFFER_SIZE];
+        Thread captureThread = new Thread(() -> {
+            while (true) {
+                try {
+                    if (captureInputStream.available() > 0) {
+                        int dataLength = captureInputStream.read(data);
+                        server.send(data, dataLength);
+                    }
+                } catch (IOException ex) {
+                    Logger.getLogger(SnifferApp.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
+        captureThread.start();
         // Print the local IP used to serve
         System.out.println(colorize("**************************************", Attribute.YELLOW_TEXT()));
         System.out.printf (colorize("(%s) Sending packets at %s:%d\n", Attribute.YELLOW_TEXT()), protocol, getLocalIp(), serverPort);
@@ -131,17 +153,17 @@ public class SnifferApp implements Runnable {
         BroadcastClient client;
         BufferHandler handler;
         switch (protocol) {
-            case SnifferConstants.PROTOCOL_UDP:
+            case UDP:
                 client = new BroadcastUdpClient();
                 break;
-            case SnifferConstants.PROTOCOL_TCP:
+            case TCP:
                 client = new BroadcastTcpClient();
                 break;
-            case SnifferConstants.PROTOCOL_SCTP:
+            case SCTP:
                 client = new BroadcastSctpClient();
                 break;
             default:
-                throw new IllegalArgumentException("Protocol not implemented: " + protocol);
+                throw new AssertionError();
         }
         if (output.isEmpty()) {
             handler = new PcapPromptBufferHandler();

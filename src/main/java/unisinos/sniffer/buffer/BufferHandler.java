@@ -1,4 +1,4 @@
-package unisinos.sniffer.handler;
+package unisinos.sniffer.buffer;
 
 public interface BufferHandler {
     

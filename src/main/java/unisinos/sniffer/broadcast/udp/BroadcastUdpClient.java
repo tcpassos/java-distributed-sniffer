@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 import unisinos.sniffer.SnifferConstants;
 import unisinos.sniffer.broadcast.BroadcastClient;
 import unisinos.sniffer.broadcast.BroadcastConstants;
-import unisinos.sniffer.handler.BufferHandler;
+import unisinos.sniffer.buffer.BufferHandler;
 
 public class BroadcastUdpClient implements BroadcastClient, BroadcastConstants {
     

@@ -1,14 +1,17 @@
 package unisinos.sniffer.broadcast.tcp;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import unisinos.sniffer.SnifferConstants;
 import unisinos.sniffer.broadcast.BroadcastClient;
-import unisinos.sniffer.handler.BufferHandler;
-import unisinos.sniffer.handler.InputStreamHandler;
+import unisinos.sniffer.buffer.BufferHandler;
 
 public class BroadcastTcpClient implements BroadcastClient {
     
@@ -46,7 +49,21 @@ public class BroadcastTcpClient implements BroadcastClient {
     @Override
     public void addHost(InetAddress host, int port) throws IOException {
         Socket clientSocket = new Socket(host, port);
-        new InputStreamHandler(clientSocket.getInputStream(), onPacketReceived, SnifferConstants.MAX_BUFFER_SIZE).handle();
+        byte[] data = new byte[SnifferConstants.MAX_BUFFER_SIZE];
+        InputStream clientInputStream = clientSocket.getInputStream();
+        Thread hostThread = new Thread(() -> {
+            while (true) {
+                try {
+                    if (clientInputStream.available() > 0) {
+                        int dataLength = clientInputStream.read(data);
+                        onPacketReceived.handle(Arrays.copyOf(data, dataLength));
+                    }
+                } catch (IOException ex) {
+                    Logger.getLogger(BroadcastTcpClient.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
+        hostThread.start();
     }
 
     /**

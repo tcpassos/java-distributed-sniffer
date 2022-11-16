@@ -15,8 +15,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import unisinos.sniffer.SnifferConstants;
 import unisinos.sniffer.broadcast.BroadcastClient;
-import unisinos.sniffer.handler.BufferHandler;
-import unisinos.sniffer.handler.BufferHandlers;
+import unisinos.sniffer.buffer.BufferHandler;
+import unisinos.sniffer.buffer.BufferHandlers;
 
 public class BroadcastSctpClient implements BroadcastClient {
     

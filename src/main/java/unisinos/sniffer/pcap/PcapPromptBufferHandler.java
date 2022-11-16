@@ -17,7 +17,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import unisinos.sniffer.handler.BufferHandler;
+import unisinos.sniffer.buffer.BufferHandler;
 
 public class PcapPromptBufferHandler implements BufferHandler {
     

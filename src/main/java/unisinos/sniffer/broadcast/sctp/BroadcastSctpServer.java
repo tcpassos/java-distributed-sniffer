@@ -69,9 +69,9 @@ public class BroadcastSctpServer implements BroadcastServer, BroadcastConstants 
                 disconnectedClients.add(clientChannel);
                 System.out.println("Listener disconnected " + remoteAddresses);
             }
-            for (SctpChannel disconnectedClient : disconnectedClients) {
-                clientChannels.remove(disconnectedClient);
-            }
+        }
+        for (SctpChannel disconnectedClient : disconnectedClients) {
+            clientChannels.remove(disconnectedClient);
         }
     }
 
