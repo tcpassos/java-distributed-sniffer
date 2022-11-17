@@ -38,7 +38,7 @@ import unisinos.sniffer.pcap.PcapRawBufferHandler;
 import unisinos.sniffer.protocol.Protocol;
 import unisinos.sniffer.shell.ProcessExecutor;
 
-@Command(name = "distributed-sniffer", mixinStandardHelpOptions = true, version = "1.1")
+@Command(name = "distributed-sniffer", mixinStandardHelpOptions = true, version = "1.2")
 public class SnifferApp implements Runnable {
     
     // Commandline parameters
@@ -109,9 +109,16 @@ public class SnifferApp implements Runnable {
         Thread captureThread = new Thread(() -> {
             while (true) {
                 try {
-                    if (captureInputStream.available() > 0) {
+                    int available = captureInputStream.available();
+                    if (available==0) {
+                        continue;
+                    }
+                    if (available <= data.length) {
                         int dataLength = captureInputStream.read(data);
                         server.send(data, dataLength);
+                    } else {
+                        captureInputStream.readNBytes(data, 0, data.length);
+                        server.send(data, data.length);
                     }
                 } catch (IOException ex) {
                     Logger.getLogger(SnifferApp.class.getName()).log(Level.SEVERE, null, ex);

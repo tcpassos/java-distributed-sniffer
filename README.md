@@ -31,11 +31,21 @@ The client/server communication implemented for TCP and SCTP protocols is simila
 ![Example](https://i.imgur.com/NdL914m.png)
 
 ## Using Docker to test
+Starting a server only
 ```console
 docker run --name sniffer-server --rm tcpassos/distributed-sniffer
 ```
+Starting a client that will listen to a server
 ```console
 docker run --name sniffer-listener --rm tcpassos/distributed-sniffer --no-serve --host=<<server address>>
+```
+Or starting a client that will listen to multiple servers (the hosts file has the IP address of each server separated by lines)
+```console
+docker run --rm \
+    --name sniffer-listener \
+    -v hosts_file_directory:/usr/src/files \
+    tcpassos/distributed-sniffer \
+    --host-file=/usr/src/files/hosts.txt
 ```
 Simulating requests:
 ```console
