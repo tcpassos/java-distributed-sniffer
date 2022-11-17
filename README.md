@@ -55,3 +55,9 @@ We can analyze packet traffic between containers with tcpdump running in another
 ```console
 docker run --rm --net=host -v "$PWD":/tcpdump kaazing/tcpdump
 ```
+## Viewing statistics for each protocol
+The script available at /tools/statistics.py can graph statistics for each implemented protocol
+```console
+python3 statistics.py --file example.pcap --port 667
+```
+![Statistics](https://i.imgur.com/RT0pXrs.png)
